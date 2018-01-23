@@ -2537,6 +2537,18 @@ MulticopterPositionControl::calculate_velocity_setpoint()
 	float vel_norm_xy = sqrtf(_vel_sp(0) * _vel_sp(0) + _vel_sp(1) * _vel_sp(1));
 
 	if (vel_norm_xy > _vel_max_xy) {
+		/* only release limit when limiting is active to prevent unexpected increases in control sensitivity after periods of inactivity*/
+		bool release_limit = !(_local_pos.vxy_max > 0.0f);
+
+		if (release_limit) {
+			if (_vel_max_xy < _params.vel_max_xy) {
+				_vel_max_xy += _dt * _params.acc_max_flow_xy;
+
+			} else {
+				_vel_max_xy = _params.vel_max_xy;
+			}
+		}
+
 		_vel_sp(0) = _vel_sp(0) * _vel_max_xy / vel_norm_xy;
 		_vel_sp(1) = _vel_sp(1) * _vel_max_xy / vel_norm_xy;
 	}
@@ -3080,20 +3092,12 @@ MulticopterPositionControl::task_main()
 		/* set default max velocity in xy to vel_max
 		 * Apply estimator limits if applicable */
 		if (_local_pos.vxy_max > 0.0f) {
-			// use the minimum of the estimator and user specified limit
-			_vel_max_xy = fminf(_params.vel_max_xy, _local_pos.vxy_max);
-			// Allow for a minimum of 0.3 m/s for repositioning
-			_vel_max_xy = fmaxf(_vel_max_xy, 0.3f);
-
-		} else {
-			// raise the limit at a constant rate up to the user specified value
-			if (_vel_max_xy >= _params.vel_max_xy) {
-				_vel_max_xy = _params.vel_max_xy;
-
-			} else {
-				_vel_max_xy += dt * _params.acc_max_flow_xy;
-			}
+			/* use the estimator specified limit and allow for a minimum of 0.3 m/s for repositioning */
+			_vel_max_xy = fmaxf(_local_pos.vxy_max, 0.3f);
 		}
+
+		/* never exceed the parameter specified maximum */
+		_vel_max_xy = fminf(_vel_max_xy, _params.vel_max_xy);
 
 		/* reset flags when landed */
 		if (_vehicle_land_detected.landed) {
