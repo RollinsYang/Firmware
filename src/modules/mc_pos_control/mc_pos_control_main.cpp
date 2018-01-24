@@ -2538,7 +2538,7 @@ MulticopterPositionControl::calculate_velocity_setpoint()
 
 	if (vel_norm_xy > _vel_max_xy) {
 		/* only release limit when limiting is active to prevent unexpected increases in control sensitivity after periods of inactivity*/
-		bool release_limit = !(_local_pos.vxy_max > 0.0f);
+		bool release_limit = !(_local_pos.vxy_max > 0.001f);
 
 		if (release_limit) {
 			if (_vel_max_xy < _params.vel_max_xy) {
@@ -3091,7 +3091,7 @@ MulticopterPositionControl::task_main()
 
 		/* set default max velocity in xy to vel_max
 		 * Apply estimator limits if applicable */
-		if (_local_pos.vxy_max > 0.0f) {
+		if (_local_pos.vxy_max > 0.001f) {
 			/* use the estimator specified limit and allow for a minimum of 0.3 m/s for repositioning */
 			_vel_max_xy = fmaxf(_local_pos.vxy_max, 0.3f);
 		}
